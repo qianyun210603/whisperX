@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from pyannote.audio import Pipeline
-from typing import Optional, Union, Callable
+from typing import Optional, Union, Callable, Any
 import torch
 
 from .audio import load_audio, SAMPLE_RATE
@@ -25,8 +25,7 @@ class DiarizationPipeline:
         num_speakers: Optional[int] = None,
         min_speakers: Optional[int] = None,
         max_speakers: Optional[int] = None,
-        print_progress: bool = False,
-        progress_callback: Optional[Callable[[float], None]] = None,
+        hook: Optional[Callable[[str, Any, str, float, float], None]] = None,
     ):
         if isinstance(audio, str):
             audio = load_audio(audio)
@@ -35,26 +34,20 @@ class DiarizationPipeline:
             'sample_rate': SAMPLE_RATE
         }
         
-        # Call the model with progress tracking
+        # Call the model with the pyannote hook
         segments = self.model(
             audio_data, 
             num_speakers=num_speakers, 
             min_speakers=min_speakers, 
-            max_speakers=max_speakers
+            max_speakers=max_speakers,
+            hook=hook
         )
         
-        # Convert to DataFrame with progress updates
+        # Convert to DataFrame
         diarize_df = pd.DataFrame(segments.itertracks(yield_label=True), columns=['segment', 'label', 'speaker'])
-        if print_progress or progress_callback:
-            total_rows = len(diarize_df)
-            for idx, row in enumerate(diarize_df.itertuples(), 1):
-                if print_progress:
-                    print(f"Processing diarization segment {idx}/{total_rows}...")
-                if progress_callback:
-                    progress_callback((idx / total_rows) * 100)
-                
         diarize_df['start'] = diarize_df['segment'].apply(lambda x: x.start)
         diarize_df['end'] = diarize_df['segment'].apply(lambda x: x.end)
+        
         return diarize_df
 
 
@@ -62,7 +55,7 @@ def assign_word_speakers(
     diarize_df: pd.DataFrame,
     transcript_result: Union[AlignedTranscriptionResult, TranscriptionResult],
     fill_nearest=False,
-) -> dict:
+) -> Union[AlignedTranscriptionResult, TranscriptionResult]:
     transcript_segments = transcript_result["segments"]
     for seg in transcript_segments:
         # assign speaker to segment (if any)
