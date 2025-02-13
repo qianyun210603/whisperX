@@ -209,7 +209,7 @@ class FasterWhisperPipeline(Pipeline):
                 # print(f2-f1)
                 yield {'inputs': audio[f1:f2]}
 
-        # Pre-process audio and merge chunks as defined by the respective VAD child class 
+        # Pre-process audio and merge chunks as defined by the respective VAD child class
         # In case vad_model is manually assigned (see 'load_model') follow the functionality of pyannote toolkit
         if issubclass(type(self.vad_model), Vad):
             waveform = self.vad_model.preprocess_audio(audio)
@@ -376,6 +376,7 @@ def load_model(
         "max_new_tokens": None,
         "clip_timestamps": None,
         "hallucination_silence_threshold": None,
+        "multilingual": False,
         "hotwords": None,
     }
 
